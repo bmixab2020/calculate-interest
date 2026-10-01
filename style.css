@@ -140,6 +140,7 @@ button:hover {
 .schedule {
     margin-top: 30px;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .schedule.hidden {
@@ -148,6 +149,7 @@ button:hover {
 
 table {
     width: 100%;
+    min-width: 720px;
     border-collapse: collapse;
     margin-top: 20px;
 }
@@ -178,13 +180,66 @@ tbody tr:hover {
     background: #f0f2ff;
 }
 
+@media (max-width: 900px) {
+    .form-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
 @media (max-width: 600px) {
+    body {
+        padding: 10px;
+    }
+
+    .container {
+        padding: 20px 16px;
+        border-radius: 8px;
+    }
+
+    h1 {
+        font-size: 22px;
+    }
+
     .form-row {
         grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .form-group {
+        margin-bottom: 14px;
+    }
+
+    input,
+    select {
+        /* 16px prevents iOS Safari from zooming the viewport on focus */
+        font-size: 16px;
     }
 
     .button-row {
         flex-direction: column;
+        gap: 10px;
+    }
+
+    button {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .result {
+        padding: 14px;
+    }
+
+    .result p {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 15px;
+    }
+
+    th,
+    td {
+        padding: 7px 8px;
+        font-size: 13px;
     }
 }
 
@@ -211,6 +266,8 @@ tbody tr:hover {
 
     table {
         font-size: 10px;
+        min-width: 0;
+        table-layout: fixed;
     }
 
     th,
