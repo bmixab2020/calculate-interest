@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mortgage Calculator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <h1>Mortgage Calculator</h1>
+        <form id="mortgageForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="loanAmount">Loan Amount ($)</label>
+                    <input type="number" id="loanAmount" placeholder="300000" step="0.01" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="apr">APR (%)</label>
+                    <input type="number" id="apr" placeholder="6.5" step="0.01" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="term">Term (Years)</label>
+                    <select id="term">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8">8</option>
+                        <option value="9">9</option>
+                        <option value="10">10</option>
+                        <option value="15">15</option>
+                        <option value="20">20</option>
+                        <option value="25">25</option>
+                        <option value="30" selected>30</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="propertyTax">Property Tax ($/mo)</label>
+                    <input type="number" id="propertyTax" placeholder="360" step="0.01" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="homeInsurance">Home Ins. ($/mo)</label>
+                    <input type="number" id="homeInsurance" placeholder="150" step="0.01" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="pmi">PMI ($/mo)</label>
+                    <input type="number" id="pmi" placeholder="0" step="0.01" min="0">
+                </div>
+            </div>
+            <div class="button-row">
+                <button type="submit" id="calculateBtn">Calculate</button>
+                <button type="button" id="printBtn">Print(PDF)</button>
+            </div>
+        </form>
+        <div id="summary" class="result hidden"></div>
+        <div id="schedule" class="schedule hidden"></div>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>
