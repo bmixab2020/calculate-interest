@@ -209,6 +209,15 @@ tbody tr:hover {
         margin-bottom: 14px;
     }
 
+    /* On phones the form stacks to roughly the full screen height, so
+       sticking it pins most of the viewport and leaves almost nothing for
+       the results. Let it scroll away with the page instead. */
+    #mortgageForm {
+        position: static;
+        box-shadow: none;
+        padding: 0;
+    }
+
     input,
     select {
         /* 16px prevents iOS Safari from zooming the viewport on focus */
@@ -240,6 +249,16 @@ tbody tr:hover {
     td {
         padding: 7px 8px;
         font-size: 13px;
+    }
+}
+
+/* Landscape phones are wider than the 600px query but have even less
+   vertical room, so key off the pointer instead of the width. */
+@media (pointer: coarse) {
+    #mortgageForm {
+        position: static;
+        box-shadow: none;
+        padding: 0;
     }
 }
 
