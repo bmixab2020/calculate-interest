@@ -4,11 +4,59 @@ let recalcTimer = null;
 const form = document.getElementById('mortgageForm');
 const inputIds = ['loanAmount', 'apr', 'term', 'propertyTax', 'homeInsurance', 'pmi'];
 
+const errorEl = document.getElementById('formError');
+
+function showError(message, reveal) {
+    errorEl.textContent = message;
+    errorEl.hidden = false;
+    if (reveal) revealIntoView(errorEl);
+}
+
+function clearError() {
+    errorEl.textContent = '';
+    errorEl.hidden = true;
+}
+
+// On a phone the form is tall enough that results land below the fold, so a
+// tap on Calculate can look like it did nothing. Only scroll when the target
+// is actually off-screen, and only on an explicit tap.
+function revealIntoView(el) {
+    const rect = el.getBoundingClientRect();
+    const fullyVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
+    if (!fullyVisible) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
 form.addEventListener('submit', function (e) {
     e.preventDefault();
     hasCalculated = true;
-    calculate();
+
+    const loanField = document.getElementById('loanAmount');
+    const aprField = document.getElementById('apr');
+
+    if (loanField.value.trim() === '') {
+        showError('Enter a loan amount.', true);
+        loanField.focus();
+        return;
+    }
+
+    if (aprField.value.trim() === '') {
+        showError('Enter an interest rate (APR).', true);
+        aprField.focus();
+        return;
+    }
+
+    calculate(true);
 });
+
+// Required-field feedback is handled here rather than by the native bubble,
+// which is easy to miss on a phone and can silently swallow the click.
+['loanAmount', 'apr'].forEach(function (id) {
+    document.getElementById(id).addEventListener('input', clearError);
+});
+
+document.getElementById('term').addEventListener('change', clearError);
 
 document.getElementById('printBtn').addEventListener('click', function () {
     if (!hasCalculated) {
@@ -53,7 +101,7 @@ inputIds.forEach(function (id) {
     });
 });
 
-function calculate() {
+function calculate(reveal) {
     const loanAmount = parseFloat(document.getElementById('loanAmount').value) || 0;
     const apr = parseFloat(document.getElementById('apr').value) || 0;
     const termYears = parseInt(document.getElementById('term').value) || 0;
@@ -61,7 +109,14 @@ function calculate() {
     const homeInsuranceMonthly = parseFloat(document.getElementById('homeInsurance').value) || 0;
     const pmiMonthly = parseFloat(document.getElementById('pmi').value) || 0;
 
-    if (loanAmount <= 0 || termYears <= 0) return;
+    if (loanAmount <= 0 || termYears <= 0) {
+        showError(loanAmount <= 0
+            ? 'Enter a loan amount greater than 0.'
+            : 'Choose a loan term.', reveal);
+        return;
+    }
+
+    clearError();
 
     const monthlyRate = (apr / 100) / 12;
     const numPayments = termYears * 12;
@@ -125,6 +180,7 @@ function calculate() {
         <p><strong>Total Monthly Payment: <span class="amount">$${formatCurrency(totalMonthlyPayment)}</span></strong></p>
     `;
     summaryDiv.classList.remove('hidden');
+    if (reveal) revealIntoView(summaryDiv);
 
     // Display schedule
     const scheduleDiv = document.getElementById('schedule');

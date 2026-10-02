@@ -11,7 +11,7 @@
 <body>
     <div class="container">
         <h1>Mortgage Calculator</h1>
-        <form id="mortgageForm">
+        <form id="mortgageForm" novalidate>
             <div class="form-row">
                 <div class="form-group">
                     <label for="loanAmount">Loan Amount ($)</label>
@@ -60,6 +60,7 @@
                 <button type="button" id="printBtn">Print(PDF)</button>
             </div>
         </form>
+        <div id="formError" class="form-error" role="alert" aria-live="assertive" hidden></div>
         <div id="summary" class="result hidden"></div>
         <div id="schedule" class="schedule hidden"></div>
     </div>
