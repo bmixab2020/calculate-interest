@@ -4,7 +4,19 @@ let recalcTimer = null;
 const form = document.getElementById('mortgageForm');
 const inputIds = ['loanAmount', 'apr', 'term', 'propertyTax', 'homeInsurance', 'pmi'];
 
-const errorEl = document.getElementById('formError');
+// A browser can serve a cached index.html alongside a freshly fetched
+// script.js (or vice versa). If #formError is missing from the markup, create
+// it, so a mixed cache can never make Calculate fail silently.
+const errorEl = document.getElementById('formError') || (function () {
+    const el = document.createElement('div');
+    el.id = 'formError';
+    el.className = 'form-error';
+    el.setAttribute('role', 'alert');
+    el.setAttribute('aria-live', 'assertive');
+    el.hidden = true;
+    form.insertAdjacentElement('afterend', el);
+    return el;
+})();
 
 function showError(message, reveal) {
     errorEl.textContent = message;
