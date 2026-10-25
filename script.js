@@ -294,7 +294,7 @@ function calculate(reveal) {
                     <th>Balance</th>
                     <th>Interest</th>
                     <th>Principal</th>
-                    <th>Extra Payment</th>
+                    <th>Extra Principal</th>
                     <th>Total Principal</th>
                     <th>Property Tax</th>
                     <th>Home Insurance</th>
