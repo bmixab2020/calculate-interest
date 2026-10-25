@@ -1,8 +1,70 @@
-let hasCalculated = false;
-let recalcTimer = null;
+function parseCurrency(val) {
+    if (val === undefined || val === null) return 0;
+    const cleaned = String(val).replace(/[^0-9.-]/g, '');
+    if (cleaned === '' || cleaned === '-' || cleaned === '.') return 0;
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? 0 : num;
+}
 
-const form = document.getElementById('mortgageForm');
-const inputIds = ['loanAmount', 'apr', 'term', 'propertyTax', 'homeInsurance', 'pmi'];
+function formatInputCurrency(val) {
+    const num = parseFloat(val);
+    if (isNaN(num)) return '';
+    return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatInputPercent(val) {
+    const num = parseFloat(val);
+    if (isNaN(num)) return '';
+    // Don't force decimals for integer-like values unless they had decimals
+    if (Math.abs(num - Math.round(num)) < 0.0001) {
+        return num.toFixed(0) + '%';
+    }
+    // Trim trailing zeros
+    let s = num.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+    return s + '%';
+}
+
+function setupCurrencyInput(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('focus', function () {
+        const num = parseCurrency(el.value);
+        if (num === 0 && el.value.trim() === '') {
+            el.value = '';
+            return;
+        }
+        el.value = num === 0 && !el.value.trim().match(/-?[0-9]/) ? '' : String(num);
+    });
+    el.addEventListener('blur', function () {
+        const num = parseCurrency(el.value);
+        if (num === 0 && el.value.trim() === '') {
+            el.value = '';
+            return;
+        }
+        el.value = formatInputCurrency(num);
+    });
+}
+
+function setupPercentInput(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('focus', function () {
+        const num = parseCurrency(el.value);
+        if (isNaN(num) && el.value.trim() === '') {
+            el.value = '';
+            return;
+        }
+        el.value = String(num === 0 && !el.value.trim().match(/[0-9]/) ? '' : num);
+    });
+    el.addEventListener('blur', function () {
+        const num = parseCurrency(el.value);
+        if (el.value.trim() === '' || isNaN(num)) {
+            el.value = '';
+            return;
+        }
+        el.value = formatInputPercent(num);
+    });
+}
 
 // A browser can serve a cached index.html alongside a freshly fetched
 // script.js (or vice versa). If #formError is missing from the markup, create
@@ -39,6 +101,15 @@ function revealIntoView(el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 }
+
+let hasCalculated = false;
+let recalcTimer = null;
+
+const form = document.getElementById('mortgageForm');
+const inputIds = ['loanAmount', 'apr', 'term', 'propertyTax', 'homeInsurance', 'pmi', 'extraPayment'];
+
+['loanAmount', 'propertyTax', 'homeInsurance', 'pmi', 'extraPayment'].forEach(function(id){ setupCurrencyInput(id); });
+setupPercentInput('apr');
 
 form.addEventListener('submit', function (e) {
     e.preventDefault();
@@ -114,12 +185,13 @@ inputIds.forEach(function (id) {
 });
 
 function calculate(reveal) {
-    const loanAmount = parseFloat(document.getElementById('loanAmount').value) || 0;
-    const apr = parseFloat(document.getElementById('apr').value) || 0;
+    const loanAmount = parseCurrency(document.getElementById('loanAmount').value) || 0;
+    const apr = parseCurrency(document.getElementById('apr').value) || 0;
     const termYears = parseInt(document.getElementById('term').value) || 0;
-    const propertyTaxMonthly = parseFloat(document.getElementById('propertyTax').value) || 0;
-    const homeInsuranceMonthly = parseFloat(document.getElementById('homeInsurance').value) || 0;
-    const pmiMonthly = parseFloat(document.getElementById('pmi').value) || 0;
+    const propertyTaxMonthly = parseCurrency(document.getElementById('propertyTax').value) || 0;
+    const homeInsuranceMonthly = parseCurrency(document.getElementById('homeInsurance').value) || 0;
+    const pmiMonthly = parseCurrency(document.getElementById('pmi').value) || 0;
+    const extraPaymentMonthly = Math.max(0, parseCurrency(document.getElementById('extraPayment').value) || 0);
 
     if (loanAmount <= 0 || termYears <= 0) {
         showError(loanAmount <= 0
@@ -143,39 +215,53 @@ function calculate(reveal) {
     }
 
     // Property tax is entered directly as a monthly amount
-    const totalMonthlyPayment = principalAndInterestMonthly + propertyTaxMonthly + homeInsuranceMonthly + pmiMonthly;
+    const totalMonthlyPayment = principalAndInterestMonthly + extraPaymentMonthly + propertyTaxMonthly + homeInsuranceMonthly + pmiMonthly;
 
-    // Generate amortization schedule
+    // Generate amortization schedule, applying any extra payment to principal
     let balance = loanAmount;
     let schedule = [];
-    for (let month = 1; month <= numPayments; month++) {
+    let month = 0;
+    while (balance > 0.005 && month < numPayments) {
+        month++;
         const interestAmount = balance * monthlyRate;
-        let principalAmount = principalAndInterestMonthly - interestAmount;
+        let scheduledPrincipal = principalAndInterestMonthly - interestAmount;
+        if (scheduledPrincipal > balance) scheduledPrincipal = balance;
+        if (scheduledPrincipal < 0) scheduledPrincipal = 0;
+        let principalAmount = scheduledPrincipal + extraPaymentMonthly;
         if (principalAmount > balance) {
             principalAmount = balance;
         }
+        if (principalAmount < 0) {
+            principalAmount = 0;
+        }
+
+        const extraApplied = Math.max(0, Math.min(extraPaymentMonthly, principalAmount - scheduledPrincipal));
 
         balance = balance - principalAmount;
-
-        // Handle final payment rounding
-        if (month === numPayments && balance < 0) {
+        if (balance < 0.005) {
             balance = 0;
         }
 
         schedule.push({
             month: month,
-            balance: balance < 0 ? 0 : balance,
+            balance: balance,
             interestAmount: interestAmount,
             principalAmount: principalAmount,
+            scheduledPrincipal: scheduledPrincipal,
+            extraPayment: extraApplied,
             propertyTax: propertyTaxMonthly,
             homeInsurance: homeInsuranceMonthly,
             pmi: pmiMonthly,
-            totalPayment: principalAndInterestMonthly + propertyTaxMonthly + homeInsuranceMonthly + pmiMonthly
+            totalPayment: interestAmount + principalAmount + propertyTaxMonthly + homeInsuranceMonthly + pmiMonthly
         });
     }
 
-    // Sum of all interest payments across the full term
+    const payoffMonths = schedule.length;
+
+    // Total interest actually paid, versus what it would have been without extras
     const totalInterest = schedule.reduce((sum, row) => sum + row.interestAmount, 0);
+    const baseTotalInterest = principalAndInterestMonthly * numPayments - loanAmount;
+    const interestSaved = Math.max(0, baseTotalInterest - totalInterest);
 
     // Display summary
     const summaryDiv = document.getElementById('summary');
@@ -185,7 +271,10 @@ function calculate(reveal) {
         <p>APR: <span class="amount">${apr}%</span></p>
         <p>Term: <span class="amount">${termYears} Years (${numPayments} Payments)</span></p>
         <p>Principal & Interest (P&I): <span class="amount">$${formatCurrency(principalAndInterestMonthly)}</span></p>
+        <p>Extra Payment: <span class="amount">$${formatCurrency(extraPaymentMonthly)}/month</span></p>
         <p>Total Interest Amount: <span class="amount">$${formatCurrency(totalInterest)}</span></p>
+        <p>Interest Saved: <span class="amount">$${formatCurrency(interestSaved)}</span></p>
+        <p>Payoff Time: <span class="amount">${formatPayoffTime(payoffMonths)}</span></p>
         <p>Property Tax: <span class="amount">$${formatCurrency(propertyTaxMonthly)}/month</span></p>
         <p>Home Insurance: <span class="amount">$${formatCurrency(homeInsuranceMonthly)}/month</span></p>
         <p>PMI: <span class="amount">$${formatCurrency(pmiMonthly)}/month</span></p>
@@ -205,6 +294,8 @@ function calculate(reveal) {
                     <th>Balance</th>
                     <th>Interest</th>
                     <th>Principal</th>
+                    <th>Extra Payment</th>
+                    <th>Total Principal</th>
                     <th>Property Tax</th>
                     <th>Home Insurance</th>
                     <th>PMI</th>
@@ -220,6 +311,8 @@ function calculate(reveal) {
                 <td>${row.month}</td>
                 <td>$${formatCurrency(row.balance)}</td>
                 <td>$${formatCurrency(row.interestAmount)}</td>
+                <td>$${formatCurrency(row.scheduledPrincipal)}</td>
+                <td>$${formatCurrency(row.extraPayment)}</td>
                 <td>$${formatCurrency(row.principalAmount)}</td>
                 <td>$${formatCurrency(row.propertyTax)}</td>
                 <td>$${formatCurrency(row.homeInsurance)}</td>
@@ -237,4 +330,13 @@ function calculate(reveal) {
 function formatCurrency(amount) {
     if (isNaN(amount) || amount === null) return '0.00';
     return amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function formatPayoffTime(months) {
+    const years = Math.floor(months / 12);
+    const remainingMonths = months % 12;
+    if (years === 0) return `${months} month${months === 1 ? '' : 's'}`;
+    const yearLabel = `${years} year${years === 1 ? '' : 's'}`;
+    if (remainingMonths === 0) return `${yearLabel} (${months} months)`;
+    return `${yearLabel} ${remainingMonths} month${remainingMonths === 1 ? '' : 's'} (${months} months)`;
 }
